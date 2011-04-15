@@ -4,6 +4,6 @@
 <beans>
     
   <!--                      Search Engine                    -->  
-  <bean id="wikiSolrIndexer" class="fr.paris.lutece.plugins.wiki.modules.solr.search.SolrWikiIndexer" />
+  <bean id="solr.wikiSolrIndexer" class="fr.paris.lutece.plugins.wiki.modules.solr.search.SolrWikiIndexer" />
   
 </beans>

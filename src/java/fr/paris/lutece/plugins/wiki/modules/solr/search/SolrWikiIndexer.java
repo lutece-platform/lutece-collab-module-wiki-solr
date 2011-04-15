@@ -36,13 +36,14 @@ package fr.paris.lutece.plugins.wiki.modules.solr.search;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.lucene.demo.html.HTMLParser;
 import org.apache.solr.client.solrj.SolrServer;
-import org.apache.solr.client.solrj.SolrServerException;
 import fr.paris.lutece.plugins.search.solr.business.SolrServerService;
+import fr.paris.lutece.plugins.search.solr.business.field.Field;
 import fr.paris.lutece.plugins.search.solr.indexer.SolrIndexer;
 import fr.paris.lutece.plugins.search.solr.indexer.SolrItem;
 import fr.paris.lutece.plugins.wiki.business.Topic;
@@ -96,9 +97,20 @@ public class SolrWikiIndexer implements SolrIndexer
         return AppPropertiesService.getProperty( PROPERTY_VERSION );
     }
 
-    public String index(  )
+    public boolean isEnable(  )
     {
-        StringBuilder sbLogs = new StringBuilder(  );
+        return "true".equalsIgnoreCase( AppPropertiesService.getProperty( PROPERTY_INDEXER_ENABLE ) );
+    }
+
+    public List<Field> getAdditionalFields(  )
+    {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    public Map<String, SolrItem> index(  )
+    {
+        Map<String, SolrItem> items = new HashMap<String, SolrItem>(  );
 
         Plugin plugin = PluginService.getPlugin( PLUGIN_NAME );
 
@@ -106,16 +118,6 @@ public class SolrWikiIndexer implements SolrIndexer
         {
             try
             {
-                sbLogs.append( "indexing " );
-                sbLogs.append( TYPE );
-                sbLogs.append( " id : " );
-                sbLogs.append( topic.getIdTopic(  ) );
-                sbLogs.append( " Name : " );
-                sbLogs.append( topic.getPageName(  ) );
-                sbLogs.append( "<br/>" );
-
-                Collection<SolrItem> items = new ArrayList<SolrItem>(  );
-
                 String strPortalUrl = AppPathService.getPortalUrl(  );
 
                 if ( topic != null )
@@ -127,29 +129,16 @@ public class SolrWikiIndexer implements SolrIndexer
                     urlSubject.addParameter( PARAMETER_ACTION, PARAMETER_ACTION_VIEW );
 
                     SolrItem docSubject = getDocument( topic, urlSubject.getUrl(  ), plugin );
-                    items.add( docSubject );
+                    items.put( getLog( docSubject ), docSubject );
                 }
-
-                SOLR_SERVER.addBeans( items );
-
-                SOLR_SERVER.commit(  );
             }
             catch ( IOException e )
             {
                 AppLogService.error( e );
             }
-            catch ( SolrServerException e )
-            {
-                AppLogService.error( e );
-            }
         }
 
-        return sbLogs.toString(  );
-    }
-
-    public boolean isEnable(  )
-    {
-        return "true".equalsIgnoreCase( AppPropertiesService.getProperty( PROPERTY_INDEXER_ENABLE ) );
+        return items;
     }
 
     /**
@@ -217,5 +206,24 @@ public class SolrWikiIndexer implements SolrIndexer
 
         // return the item
         return item;
+    }
+
+    /**
+     * Generate the log line for the specified {@link SolrItem}
+     * @param item The {@link SolrItem}
+     * @return The string representing the log line
+     */
+    private String getLog( SolrItem item )
+    {
+        StringBuilder sbLogs = new StringBuilder(  );
+        sbLogs.append( "indexing " );
+        sbLogs.append( item.getType(  ) );
+        sbLogs.append( " id : " );
+        sbLogs.append( item.getUid(  ) );
+        sbLogs.append( " Title : " );
+        sbLogs.append( item.getTitle(  ) );
+        sbLogs.append( "<br/>" );
+
+        return sbLogs.toString(  );
     }
 }

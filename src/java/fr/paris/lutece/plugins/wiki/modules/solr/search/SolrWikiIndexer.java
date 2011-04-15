@@ -70,9 +70,6 @@ public class SolrWikiIndexer implements SolrIndexer
     private static final String PROPERTY_NAME = "wiki-solr.indexer.name";
     private static final String PROPERTY_VERSION = "wiki-solr.indexer.version";
     private static final String PROPERTY_INDEXER_ENABLE = "wiki-solr.indexer.enable";
-    private static final String SITE = AppPropertiesService.getProperty( "lutece.name" );
-    private static final SolrServer SOLR_SERVER = SolrServerService.getInstance(  ).getSolrServer(  );
-    private static final String TYPE = "WIKI";
     private static final String PARAMETER_PAGE_NAME = "page_name";
     private static final String PARAMETER_ACTION_VIEW = "view";
     private static final String PLUGIN_NAME = "wiki";
@@ -81,6 +78,24 @@ public class SolrWikiIndexer implements SolrIndexer
     public static final String SHORT_NAME_TOPIC = "wis";
     public static final String SHORT_NAME_TOPIC_CONTENT = "wic";
     private static final String PARAMETER_ACTION = "action";
+    
+    // Site name
+    private static final String PROPERTY_SITE = "lutece.name";
+    private static final String PROPERTY_PROD_URL = "lutece.prod.url";
+    private String _strSite;
+    private String _strProdUrl;
+
+    public SolrWikiIndexer(  )
+    {
+        super(  );
+        _strSite = AppPropertiesService.getProperty( PROPERTY_SITE );
+        _strProdUrl = AppPropertiesService.getProperty( PROPERTY_PROD_URL );
+
+        if ( !_strProdUrl.endsWith( "/" ) )
+        {
+            _strProdUrl = _strProdUrl + "/";
+        }
+    }
 
     public String getDescription(  )
     {
@@ -122,7 +137,7 @@ public class SolrWikiIndexer implements SolrIndexer
 
                 if ( topic != null )
                 {
-                    UrlItem urlSubject = new UrlItem( strPortalUrl );
+                    UrlItem urlSubject = new UrlItem( _strProdUrl + strPortalUrl );
                     urlSubject.addParameter( XPageAppService.PARAM_XPAGE_APP,
                         AppPropertiesService.getProperty( PROPERTY_PAGE_PATH_LABEL ) );
                     urlSubject.addParameter( PARAMETER_PAGE_NAME, topic.getPageName(  ) );
@@ -199,7 +214,7 @@ public class SolrWikiIndexer implements SolrIndexer
         item.setTitle( topic.getPageName(  ) );
 
         //Setting the Site field
-        item.setSite( SITE );
+        item.setSite( _strSite );
 
         // Setting the Type field
         item.setType( PLUGIN_NAME );

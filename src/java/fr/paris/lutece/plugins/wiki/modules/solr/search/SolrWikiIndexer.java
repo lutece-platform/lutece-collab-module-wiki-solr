@@ -36,13 +36,12 @@ package fr.paris.lutece.plugins.wiki.modules.solr.search;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.demo.html.HTMLParser;
-import org.apache.solr.client.solrj.SolrServer;
-import fr.paris.lutece.plugins.search.solr.business.SolrServerService;
 import fr.paris.lutece.plugins.search.solr.business.field.Field;
 import fr.paris.lutece.plugins.search.solr.indexer.SolrIndexer;
 import fr.paris.lutece.plugins.search.solr.indexer.SolrItem;
@@ -52,6 +51,7 @@ import fr.paris.lutece.plugins.wiki.business.TopicVersion;
 import fr.paris.lutece.plugins.wiki.business.TopicVersionHome;
 import fr.paris.lutece.plugins.wiki.service.parser.LuteceWikiParser;
 import fr.paris.lutece.portal.service.content.XPageAppService;
+import fr.paris.lutece.portal.service.message.SiteMessageException;
 import fr.paris.lutece.portal.service.plugin.Plugin;
 import fr.paris.lutece.portal.service.plugin.PluginService;
 import fr.paris.lutece.portal.service.util.AppLogService;
@@ -78,7 +78,7 @@ public class SolrWikiIndexer implements SolrIndexer
     public static final String SHORT_NAME_TOPIC = "wis";
     public static final String SHORT_NAME_TOPIC_CONTENT = "wic";
     private static final String PARAMETER_ACTION = "action";
-    
+
     // Site name
     private static final String PROPERTY_SITE = "lutece.name";
     private static final String PROPERTY_PROD_URL = "lutece.prod.url";
@@ -119,8 +119,7 @@ public class SolrWikiIndexer implements SolrIndexer
 
     public List<Field> getAdditionalFields(  )
     {
-        // TODO Auto-generated method stub
-        return null;
+        return new ArrayList<Field>(  );
     }
 
     public Map<String, SolrItem> index(  )
@@ -154,6 +153,30 @@ public class SolrWikiIndexer implements SolrIndexer
         }
 
         return items;
+    }
+
+    public List<SolrItem> getDocuments( String strDocument )
+        throws IOException, InterruptedException, SiteMessageException
+    {
+        List<SolrItem> listDocs = new ArrayList<SolrItem>(  );
+        String strPortalUrl = AppPathService.getPortalUrl(  );
+        Plugin plugin = PluginService.getPlugin( PLUGIN_NAME );
+
+        Topic topic = TopicHome.findByPrimaryKey( Integer.parseInt( strDocument ), plugin );
+
+        if ( topic != null )
+        {
+            UrlItem urlSubject = new UrlItem( strPortalUrl );
+            urlSubject.addParameter( XPageAppService.PARAM_XPAGE_APP,
+                AppPropertiesService.getProperty( PROPERTY_PAGE_PATH_LABEL ) );
+            urlSubject.addParameter( PARAMETER_PAGE_NAME, topic.getPageName(  ) );
+            urlSubject.addParameter( PARAMETER_ACTION, PARAMETER_ACTION_VIEW );
+
+            SolrItem docSubject = getDocument( topic, urlSubject.getUrl(  ), plugin );
+            listDocs.add( docSubject );
+        }
+
+        return listDocs;
     }
 
     /**

@@ -33,6 +33,15 @@
  */
 package fr.paris.lutece.plugins.wiki.modules.solr.search;
 
+import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.apache.lucene.demo.html.HTMLParser;
+
 import fr.paris.lutece.plugins.search.solr.business.field.Field;
 import fr.paris.lutece.plugins.search.solr.indexer.SolrIndexer;
 import fr.paris.lutece.plugins.search.solr.indexer.SolrIndexerService;
@@ -44,22 +53,11 @@ import fr.paris.lutece.plugins.wiki.business.TopicVersion;
 import fr.paris.lutece.plugins.wiki.business.TopicVersionHome;
 import fr.paris.lutece.plugins.wiki.service.parser.LuteceWikiParser;
 import fr.paris.lutece.portal.service.content.XPageAppService;
-import fr.paris.lutece.portal.service.message.SiteMessageException;
 import fr.paris.lutece.portal.service.plugin.Plugin;
 import fr.paris.lutece.portal.service.plugin.PluginService;
-import fr.paris.lutece.portal.service.util.AppPathService;
+import fr.paris.lutece.portal.service.util.AppLogService;
 import fr.paris.lutece.portal.service.util.AppPropertiesService;
 import fr.paris.lutece.util.url.UrlItem;
-
-import org.apache.lucene.demo.html.HTMLParser;
-
-import java.io.IOException;
-import java.io.Reader;
-import java.io.StringReader;
-
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
 
 
 /**
@@ -81,26 +79,17 @@ public class SolrWikiIndexer implements SolrIndexer
     public static final String SHORT_NAME_TOPIC_CONTENT = "wic";
     private static final String PARAMETER_ACTION = "action";
 
+    private static final String TOPIC_INDEXATION_ERROR = "[SolrWikiIndexer] An error occured during the indexation of the topic number ";
+    
     // Indexed resource type name
     public static final String CONSTANT_TYPE_RESOURCE = "WIKI_TOPIC";
 
     // Site name
-    private static final String PROPERTY_SITE = "lutece.name";
-    private static final String PROPERTY_PROD_URL = "lutece.prod.url";
     private static final List<String> LIST_RESSOURCES_NAME = new ArrayList<String>(  );
-    private String _strSite;
-    private String _strProdUrl;
 
     public SolrWikiIndexer(  )
     {
         super(  );
-        _strSite = AppPropertiesService.getProperty( PROPERTY_SITE );
-        _strProdUrl = AppPropertiesService.getProperty( PROPERTY_PROD_URL );
-
-        if ( !_strProdUrl.endsWith( "/" ) )
-        {
-            _strProdUrl = _strProdUrl + "/";
-        }
 
         LIST_RESSOURCES_NAME.add( CONSTANT_TYPE_RESOURCE );
     }
@@ -148,30 +137,40 @@ public class SolrWikiIndexer implements SolrIndexer
     /**
      * {@inheritDoc}
      */
-    public void indexDocuments(  ) throws IOException, InterruptedException, SiteMessageException
+    public List<String> indexDocuments(  )
     {
         Plugin plugin = PluginService.getPlugin( PLUGIN_NAME );
 
+        List<String> lstErrors = new ArrayList<String>(  );
+        
         for ( Topic topic : TopicHome.getTopicsList( plugin ) )
         {
-            String strPortalUrl = AppPathService.getPortalUrl(  );
-
             if ( topic != null )
             {
-                UrlItem urlSubject = new UrlItem( _strProdUrl + strPortalUrl );
-                urlSubject.addParameter( XPageAppService.PARAM_XPAGE_APP,
-                    AppPropertiesService.getProperty( PROPERTY_PAGE_PATH_LABEL ) );
-                urlSubject.addParameter( PARAMETER_PAGE_NAME, topic.getPageName(  ) );
-                urlSubject.addParameter( PARAMETER_ACTION, PARAMETER_ACTION_VIEW );
+            	try
+            	{
+            		UrlItem urlSubject = new UrlItem( SolrIndexerService.getBaseUrl(  ) );
+            		urlSubject.addParameter( XPageAppService.PARAM_XPAGE_APP,
+            				AppPropertiesService.getProperty( PROPERTY_PAGE_PATH_LABEL ) );
+            		urlSubject.addParameter( PARAMETER_PAGE_NAME, topic.getPageName(  ) );
+            		urlSubject.addParameter( PARAMETER_ACTION, PARAMETER_ACTION_VIEW );
 
-                SolrItem docSubject = getDocument( topic, urlSubject.getUrl(  ), plugin );
+            		SolrItem docSubject = getDocument( topic, urlSubject.getUrl(  ), plugin );
 
-                if ( docSubject != null )
-                {
-                    SolrIndexerService.write( docSubject );
-                }
+            		if ( docSubject != null )
+            		{
+            			SolrIndexerService.write( docSubject );
+            		}
+            	}
+            	catch ( IOException e )
+            	{
+            		lstErrors.add( SolrIndexerService.buildErrorMessage( e ) );
+            		AppLogService.error( TOPIC_INDEXATION_ERROR + topic.getIdTopic(  ), e );
+            	}
             }
         }
+        
+        return lstErrors;
     }
 
     /**
@@ -180,14 +179,13 @@ public class SolrWikiIndexer implements SolrIndexer
     public List<SolrItem> getDocuments( String strDocument )
     {
         List<SolrItem> listDocs = new ArrayList<SolrItem>(  );
-        String strPortalUrl = AppPathService.getPortalUrl(  );
         Plugin plugin = PluginService.getPlugin( PLUGIN_NAME );
 
         Topic topic = TopicHome.findByPrimaryKey( Integer.parseInt( strDocument ), plugin );
 
         if ( topic != null )
         {
-            UrlItem urlSubject = new UrlItem( strPortalUrl );
+            UrlItem urlSubject = new UrlItem( SolrIndexerService.getBaseUrl(  ) );
             urlSubject.addParameter( XPageAppService.PARAM_XPAGE_APP,
                 AppPropertiesService.getProperty( PROPERTY_PAGE_PATH_LABEL ) );
             urlSubject.addParameter( PARAMETER_PAGE_NAME, topic.getPageName(  ) );
@@ -267,7 +265,7 @@ public class SolrWikiIndexer implements SolrIndexer
         item.setTitle( topic.getPageName(  ) );
 
         //Setting the Site field
-        item.setSite( _strSite );
+        item.setSite( SolrIndexerService.getWebAppName(  ) );
 
         // Setting the Type field
         item.setType( PLUGIN_NAME );

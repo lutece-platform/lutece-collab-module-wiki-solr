@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document>
+	<properties>
+		<title>Module wiki solr</title>
+	</properties>
+	<body>
+		<section name="Module wiki solr">
+			<subsection name="Introduction">
+				Index wiki content in solr server.
+			</subsection>
+		</section>
+	</body>
+</document>
